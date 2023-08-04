@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 
-  - Template for testing/demoing Vision One Container Security
+Description: Main template with parameters
 
 Mappings:
   RegionMap:
@@ -61,7 +60,6 @@ Mappings:
     # me-south-1:
     #   HostedId: "Z20ZBPC0SS8806"
 
-
 Parameters:
   BuildEks:
     Type: String
@@ -79,42 +77,44 @@ Conditions:
 
 Resources:
   VPCStack:
-      Type: AWS::CloudFormation::Stack
-      Properties:
-        TemplateURL: !Sub 'https://v1-demo-environments.s3.amazonaws.com/utils/vpc.template.yaml'
-        Parameters:
-          NumberOfAZs: 3
-          AvailabilityZones: !FindInMap
-            - RegionMap
-            - !Ref 'AWS::Region'
-            - AZs
-          CreateAdditionalPrivateSubnets: 'false'
-
-  EKSStack:
-    Condition: BuildEks
     Type: AWS::CloudFormation::Stack
     Properties:
+      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/vpc.template.yaml'
       Parameters:
-        KeyPairName: !GetAtt KeyPairStack.Outputs.KeyPairName
-        QSS3BucketName: v1-demo-environments
-        QSS3KeyPrefix: utils/eks
-        QSS3BucketRegion: !Sub ${AWS::Region}
-        RemoteAccessCIDR: '0.0.0.0/0'
-        AdditionalEKSAdminUserArn: ""
-        AdditionalEKSAdminRoleArn: ""
-        VPCID: !GetAtt VPCStack.Outputs.VPCID
-        PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
-        PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
-        PublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
-        ProvisionBastionHost: "Disabled"
-        ALBIngressController: "Disabled"
-        EKSPublicAccessEndpoint: "Enabled"
-      TemplateURL: !Sub 'https://v1-demo-environments.s3.amazonaws.com/utils/amazon-eks-entrypoint-existing-vpc.template.yaml'
-    DependsOn: 
-      - VPCStack
-      - KeyPairStack
-
+        NumberOfAZs: 2
+        AvailabilityZones: !FindInMap
+          - RegionMap
+          - !Ref 'AWS::Region'
+          - AZs
   KeyPairStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://v1-demo-environments.s3.amazonaws.com/utils/keypair.template.yaml'
+
+  ECSStack:
+    Condition: BuildEcs
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/ecs.template.yaml'
+      Parameters:
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
+        KeyName: !GetAtt KeyPairStack.Outputs.KeyPairName
+        SubnetId: 
+          Fn::Join:
+            - ','
+            - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
+              - !GetAtt VPCStack.Outputs.PublicSubnet2ID
+    DependsOn:
+      - VPCStack
+      - KeyPairStack
+
+  ECSServiceStack:
+    Condition: BuildEcs
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/ecs-service.template.yaml'
+      Parameters:
+        ECSClustername: !GetAtt ECSStack.Outputs.ecscluster
+        taskdefintion: !GetAtt ECSStack.Outputs.taskdef
+    DependsOn:
+      - ECSStack

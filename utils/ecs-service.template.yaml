@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The template used to create an ECS Service.
+Parameters:
+  ECSClusterName:
+    Type: String
+  taskdefinition:
+    Type: String
+Resources:
+  ECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ECSClusterName
+      TaskDefinition: !Ref taskdefinition
+      LaunchType: EC2
+      ServiceName: 'demo-service'
+      SchedulingStrategy: REPLICA
+      DesiredCount: 1
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      DeploymentController:
+        Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies:
+        - Field: 'attribute:ecs.availability-zone'
+          Type: spread
+        - Field: instanceId
+          Type: spread
+      PlacementConstraints: []
+      Tags: []
+      EnableECSManagedTags: true
+Outputs:
+  ECSService:
+    Description: The created service.
+    Value: !Ref ECSService
