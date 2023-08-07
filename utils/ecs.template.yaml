@@ -240,6 +240,13 @@ Resources:
       Path: /
       Roles:
         - !Ref EC2Role
+  RunningTaskParameter:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      DataType: text
+      Type: String
+      Value: default
+
 Outputs:
   ecscluster:
     Value: !Ref ECSCluster

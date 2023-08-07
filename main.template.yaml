@@ -108,13 +108,26 @@ Resources:
       - VPCStack
       - KeyPairStack
 
-  ECSServiceStack:
+  EcsServiceStack:
     Condition: BuildEcs
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/ecs-service.template.yaml'
       Parameters:
-        ECSClustername: !GetAtt ECSStack.Outputs.ecscluster
-        taskdefintion: !GetAtt ECSStack.Outputs.taskdef
+        ECSClusterName: !GetAtt ECSStack.Outputs.ecscluster
+        taskdefinition: !GetAtt ECSStack.Outputs.taskdef
     DependsOn:
       - ECSStack
+  
+  EksStack:
+    Condition: BuildEks
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/eks.template.yaml'
+      Parameters:
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
+        PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
+        PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
+    DependsOn:
+      - VPCStack
+      - KeyPairStack
