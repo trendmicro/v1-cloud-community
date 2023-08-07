@@ -63,17 +63,23 @@ Mappings:
 Parameters:
   BuildEks:
     Type: String
-    AllowedValues: ["true", "false"]
+    AllowedValues: 
+      - true
+      - false
     Default: "true"
   BuildEcs:
     Type: String
-    AllowedValues: ["true", "false"]
+    AllowedValues: 
+      - true
+      - false
     Default: "true"
 Conditions:
-  BuildEks:
-    !Equals [ true, !Ref BuildEks ]
-  BuildEcs:
-    !Equals [ true, !Ref BuildEcs ]
+  BuildEks: !Equals 
+    - !Ref BuildEks
+    - true
+  BuildEcs: !Equals 
+    - !Ref BuildEcs
+    - true
 
 Resources:
   VPCStack:
@@ -131,3 +137,22 @@ Resources:
     DependsOn:
       - VPCStack
       - KeyPairStack
+  
+  EksNodeGroupStack:
+    Condition: BuildEks
+    DependsOn:
+      - EksStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/eks-nodegroup.template.yaml'
+      Parameters:
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
+        KeyName: !GetAtt KeyPairStack.Outputs.KeyPairName
+        ClusterControlPlaneSecurityGroup: EksStack.Outputs.EksSecurityGroup
+        ClusterName: EksStack.Outputs.ClusterName
+        Subnets:
+          Fn::Join:
+            - ','
+            - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
+              - !GetAtt VPCStack.Outputs.PublicSubnet2ID
+

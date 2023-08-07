@@ -39,3 +39,11 @@ Resources:
         SubnetIds:
         - !Ref PublicSubnet1ID
         - !Ref PublicSubnet2ID
+Outputs:
+  ClusterName:
+    Value: !Ref EKSCluster
+  EksSecurityGroup:
+    Value: !Ref EksSecurityGroup
+    
+
+
