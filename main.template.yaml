@@ -148,8 +148,8 @@ Resources:
       Parameters:
         VpcId: !GetAtt VPCStack.Outputs.VPCID
         KeyName: !GetAtt KeyPairStack.Outputs.KeyPairName
-        ClusterControlPlaneSecurityGroup: EksStack.Outputs.EksSecurityGroup
-        ClusterName: EksStack.Outputs.ClusterName
+        ClusterControlPlaneSecurityGroup: !GetAtt EksStack.Outputs.EksSecurityGroup
+        ClusterName: !GetAtt EksStack.Outputs.ClusterName
         Subnets:
           Fn::Join:
             - ','

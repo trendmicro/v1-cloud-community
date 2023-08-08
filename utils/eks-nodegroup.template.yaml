@@ -13,7 +13,6 @@ Metadata:
       - Label:
           default: Worker Node Configuration
         Parameters:
-          - NodeGroupName
           - NodeAutoScalingGroupMinSize
           - NodeAutoScalingGroupDesiredCapacity
           - NodeAutoScalingGroupMaxSize
@@ -388,7 +387,7 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: "true"
-          Value: !Sub ${ClusterName}-${NodeGroupName}-Node
+          Value: !Sub ${ClusterName}-Node
         - Key: !Sub kubernetes.io/cluster/${ClusterName}
           PropagateAtLaunch: "true"
           Value: owned
