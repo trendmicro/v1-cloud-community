@@ -62,3 +62,5 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
     --profile ${AWS_PROFILE}  --disable-rollback --region us-east-1
 
 echo 'Stack deployed!'
+
+

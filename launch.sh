@@ -63,3 +63,13 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
     --disable-rollback --region ${AWS_REGION}
 
 echo 'Stack deployed!'
+
+curl https://github.com/wisco24/container-demos/blob/43fe910ad540a017424e4ce176a479f7df1d2f51/cloudshell.zip > cloudshell.zip
+unzip cloudshell.zip
+rm cloudshell.zip
+cd cloudshell
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+sudo yum install -y openssl
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+./deploy.sh
