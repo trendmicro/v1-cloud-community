@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
+Description: Amazon ECS - Main Cluster with 2 ec2 nodes
 Parameters:
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
@@ -92,39 +93,10 @@ Resources:
         - - !Ref 'AWS::StackName'
           - '-ecs-demo-app'
       ContainerDefinitions:
-        - Name: simple-app
-          Cpu: '10'
-          Essential: 'true'
-          Image: 'httpd:2.4'
-          Memory: '300'
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref CloudwatchLogsGroup
-              awslogs-region: !Ref 'AWS::Region'
-              awslogs-stream-prefix: ecs-demo-app
-          MountPoints:
-            - ContainerPath: /usr/local/apache2/htdocs
-              SourceVolume: my-vol
-          PortMappings:
-            - ContainerPort: 80
-        - Name: busybox
+        - Name: dvwa
           Cpu: 10
-          Command:
-            - >-
-              /bin/sh -c "while true; do echo '<html> <head> <title>Amazon ECS
-              Sample App</title> <style>body {margin-top: 40px;
-              background-color: #333;} </style> </head><body> <div
-              style=color:white;text-align:center> <h1>Amazon ECS Sample
-              App</h1> <h2>Congratulations!</h2> <p>Your application is now
-              running on a container in Amazon ECS.</p>' > top; /bin/date > date
-              ; echo '</div></body></html>' > bottom; cat top date bottom >
-              /usr/local/apache2/htdocs/index.html ; sleep 1; done"
-          EntryPoint:
-            - sh
-            - '-c'
-          Essential: false
-          Image: busybox
+          Essential: true
+          Image: sagikazarmark/dvwa
           Memory: 200
           LogConfiguration:
             LogDriver: awslogs
@@ -132,10 +104,6 @@ Resources:
               awslogs-group: !Ref CloudwatchLogsGroup
               awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: ecs-demo-app
-          VolumesFrom:
-            - SourceContainer: simple-app
-      Volumes:
-        - Name: my-vol
 
   ECSAutoScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'

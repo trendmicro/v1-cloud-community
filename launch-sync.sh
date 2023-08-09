@@ -4,8 +4,8 @@
 set -e
 
 # Check if number of arguments equals 3 or 4
-if [ "$#" -ne 1 ]; then
-    echo "You must enter a command line arguments: STACK_NAME "
+if [ "$#" -ne 3 ]; then
+    echo "You must enter 3 or 4 command line arguments: BUCKET_NAME STACK_NAME AWS_PROFILE"
     exit
 fi
 
@@ -24,8 +24,9 @@ then
 fi
 
 # Get Bucket
-BUCKET_NAME="v1-demo-environments"
-Bucket_Location=$(aws s3api get-bucket-location --bucket ${BUCKET_NAME} --output text)
+BUCKET_NAME=$1
+AWS_PROFILE=$3
+Bucket_Location=$(aws s3api get-bucket-location --bucket ${BUCKET_NAME} --profile ${AWS_PROFILE} --output text)
 if [ $Bucket_Location != '' ] && [ $Bucket_Location != 'None' ]
 then
   BUCKET_REGION=${Bucket_Location}
@@ -35,18 +36,16 @@ fi
 echo 'Bucket Region is '${BUCKET_REGION}
 echo ""
 
-# Set Region
-if [ $2 != '']
-then
-  AWS_REGION=$2
-else
-  AWS_REGION="us-east-1"
-fi
-echo 'Region to be deployed to is '${AWS_REGION}
+# Sync local folder with S3
+FOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+echo 'Syncing local files to S3 bucket...'
+aws s3 sync ${FOLDER} s3://${BUCKET_NAME}/ --exclude ".git/*" --profile ${AWS_PROFILE} --delete
+echo 'Files synced!'
+echo ''
 
 # Create CloudFormation Stack
-STACK_NAME=$1
+STACK_NAME=$2
 BUCKET_URL="https://"${BUCKET_NAME}".s3."${BUCKET_REGION}".amazonaws.com"
 TEMPLATE_URL=""${BUCKET_URL}"/main.template.yaml"
 PARAMETER1="true"
@@ -57,9 +56,9 @@ echo 'Deploying Stack...'
 # ParameterKey=PARAMETER2,ParameterValue=${PARAMETER2} \
 aws cloudformation create-stack --stack-name ${STACK_NAME} \
     --template-url ${TEMPLATE_URL} \
-    --parameters ParameterKey=BuildEks,ParameterValue=true \
+    --parameters ParameterKey=BuildEks,ParameterValue=false \
     --parameters ParameterKey=BuildEcs,ParameterValue=true \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-    --disable-rollback --region ${AWS_REGION}
+    --profile ${AWS_PROFILE}  --disable-rollback --region us-east-1
 
 echo 'Stack deployed!'

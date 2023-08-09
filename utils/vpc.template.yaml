@@ -1,42 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  This template creates a basic VPC with 3 public submets   
-Metadata:
-  QuickStartDocumentation:
-    EntrypointName: "Launch a New VPC"
-    OptionalParameters:
-      - PublicSubnetTag1
-      - PublicSubnetTag2
-      - PublicSubnetTag3
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      - Label:
-          default: Availability Zone Configuration
-        Parameters:
-          - AvailabilityZones
-          - NumberOfAZs
-      - Label:
-          default: Network Configuration
-        Parameters:
-          - VPCCIDR
-          - CreatePublicSubnets
-          - PublicSubnet1CIDR
-          - PublicSubnet2CIDR
-          - PublicSubnet3CIDR
-          - PublicSubnet4CIDR
-          - PublicSubnetTag1
-          - PublicSubnetTag2
-          - PublicSubnetTag3
-    ParameterLabels:
-      AvailabilityZones:
-        default: Availability Zones
-      CreatePublicSubnets:
-        default: Create public subnets
-      PublicSubnet1CIDR:
-        default: Public subnet 1 CIDR
-      PublicSubnet2CIDR:
-        default: Public subnet 2 CIDR
-
+  This template creates a basic VPC with 2 public subnets   
 Parameters:
   AvailabilityZones:
     Description: 'List of Availability Zones to use for the subnets in the VPC. Note:
