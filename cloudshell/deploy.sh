@@ -47,14 +47,12 @@ eksctl create cluster \
     -t t3.medium \
     --enable-ssm \
     --full-ecr-access \
+    --region=$1
     --alb-ingress-access \
     --tags purpose=demo,owner="$(whoami)" \
     --name "$CLUSTER_NAME"
 echo "💬 ${green}EKS Cluster $CLUSTER_NAME deployed."
 
-# First parameter is the cloudone dev us1 api key.
-REGION=$1
-C1APIKEY=$2
 
 # Deploys Calico according to https://docs.aws.amazon.com/eks/latest/userguide/calico.html
 echo "💬 ${green}Deploying Calico..."
@@ -94,10 +92,7 @@ echo "💬 ${green}Container Security deployed."
 # Saving state to local file for later demo cleanup
 STATE=$(jq --null-input \
   --arg clustername "$CLUSTER_NAME" \
-  --arg clusterid "$CLUSTERID" \
-  --arg rulesetid "$RULESETID" \
-  --arg policyid "$POLICYID" \
-  '{"clustername": $clustername, "clusterid": $clusterid, "rulesetid": $rulesetid, "policyid": $policyid}')
+  '{"clustername": $clustername}')
 echo "$STATE" > $STATE_FILE
 
 echo "💬 ${green}Deployment completed."

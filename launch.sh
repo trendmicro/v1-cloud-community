@@ -4,15 +4,8 @@
 set -e
 
 # Check if number of arguments equals 3 or 4
-if [ "$#" -ne 1 ]; then
-    echo "You must enter a command line arguments: STACK_NAME "
-    exit
-fi
-
-# Check if AWS CLI is installed.
-if ! command -v aws &> /dev/null
-then
-    echo "AWS CLI could not be found. Install it here: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html"
+if [ "$#" -ne 2 ]; then
+    echo "You must enter a command line arguments: STACK_NAME AWS_REGION"
     exit
 fi
 
@@ -64,7 +57,7 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
 
 echo 'Stack deployed!'
 
-curl https://github.com/wisco24/container-demos/blob/43fe910ad540a017424e4ce176a479f7df1d2f51/cloudshell.zip > cloudshell.zip
+curl https://v1-demo-environments.s3.us-east-1.amazonaws.com/cloudshell.zip > cloudshell.zip
 unzip cloudshell.zip
 rm cloudshell.zip
 cd cloudshell
@@ -72,4 +65,4 @@ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/d
 sudo mv /tmp/eksctl /usr/local/bin
 sudo yum install -y openssl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-./deploy.sh
+./deploy.sh ${AWS_REGION}
