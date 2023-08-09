@@ -50,7 +50,8 @@ eksctl create cluster \
     --region=$2
     --alb-ingress-access \
     --tags purpose=demo,owner="$(whoami)" \
-    --name "$CLUSTER_NAME"
+    --name "$CLUSTER_NAME" \
+    --vpc-public-subnets=$3,$4
 echo "💬 ${green}EKS Cluster $CLUSTER_NAME deployed."
 
 

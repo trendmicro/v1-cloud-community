@@ -147,4 +147,11 @@ Resources:
             - ','
             - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
               - !GetAtt VPCStack.Outputs.PublicSubnet2ID
-
+  
+Outputs:
+  PublicSubnet1ID:
+    Description: Public subnet 1 ID in Availability Zone 1
+    Value: !GetAtt VPCStack.Outputs.PublicSubnet1ID
+  PublicSubnet2ID:
+    Description: Public subnet 2 ID in Availability Zone 2
+    Value: !GetAtt VPCStack.Outputs.PublicSubnet2ID
