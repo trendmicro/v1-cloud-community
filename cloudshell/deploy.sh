@@ -38,7 +38,7 @@ STATE_FILE=".container-security-demo"
 green=$(tput setaf 2)
 
 # Set Cluster Name
-CLUSTER_NAME=$(whoami)-cluster-$RANDOM
+CLUSTER_NAME=$1-cluster-$RANDOM
 
 # Deploys EKS cluster.
 echo "💬 ${green}Deploying EKS cluster $CLUSTER_NAME..."
@@ -47,7 +47,7 @@ eksctl create cluster \
     -t t3.medium \
     --enable-ssm \
     --full-ecr-access \
-    --region=$1
+    --region=$2
     --alb-ingress-access \
     --tags purpose=demo,owner="$(whoami)" \
     --name "$CLUSTER_NAME"
