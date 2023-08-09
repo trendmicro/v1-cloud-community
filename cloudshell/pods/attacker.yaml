@@ -17,5 +17,5 @@ spec:
     spec:
       containers:
       - name: attacker
-        image: gcr.io/distroless/python3-debian11
+        image: public.ecr.aws/k1q0d6m0/attacker
 ---

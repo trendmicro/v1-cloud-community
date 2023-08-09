@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: java-goof
-        image: raphabot/java-goof
+        image: public.ecr.aws/k1q0d6m0/java-demo:latest
         ports:
         - containerPort: 80
 ---
