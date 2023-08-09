@@ -67,7 +67,7 @@ sudo yum install -y openssl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 echo 'Waiting for VPC to be created....'
 aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME} --region ${AWS_REGION}
-Subnet1=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --region ${AWS_REGION} 'Stacks[0].Outputs[?OutputKey==`PublicSubnet1`].OutputValue' --output text)
-Subnet2=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --region ${AWS_REGION} 'Stacks[0].Outputs[?OutputKey==`PublicSubnet2`].OutputValue' --output text)
+Subnet1=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${STACK_NAME}'][].Outputs[?OutputKey=='PublicSubnet1ID'].OutputValue" --output textt)
+Subnet2=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${STACK_NAME}'][].Outputs[?OutputKey=='PublicSubnet2ID'].OutputValue" --output textt)
 
 ./deploy.sh ${STACK_NAME} ${AWS_REGION} ${Subnet1} ${Subnet2}
