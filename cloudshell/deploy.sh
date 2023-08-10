@@ -72,13 +72,13 @@ echo "💬 ${green}Deploying vulnerable apps..."
 kubectl apply -f pods/java-goof.yaml
 sleep 15
 JAVAGOOFURL=$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].spec.clusterIP}')
-echo "💬 ${green}java-goof URL: http://${JAVAGOOFURL}"
+echo "💬 ${green}java-goof deployed.  Container IP: ${JAVAGOOFURL}"
 
 # Deploy openssl vulnerable app
 kubectl apply -f pods/openssl3.yaml
 sleep 15
 WEBAPPURL=$(kubectl get svc -n demo --selector=app=web-app -o jsonpath='{.items[*].spec.clusterIP}')
-echo "💬 ${green}web-app URL: http://${WEBAPPURL}"
+echo "💬 ${green}web-app deployed with openssl.  Container IP: ${WEBAPPURL}"
 echo "💬 ${green}Vulnerable apps deployed."
 
 
@@ -88,7 +88,7 @@ helm install \
      --namespace trendmicro-system --create-namespace \
      --values ../overrides.yaml \
      https://github.com/trendmicro/cloudone-container-security-helm/archive/master.tar.gz
-echo "💬 ${green}Container Security deployed."
+echo "💬 ${green}Trend Vision One - Container Security deployed."
 
 # Saving state to local file for later demo cleanup
 STATE=$(jq --null-input \
