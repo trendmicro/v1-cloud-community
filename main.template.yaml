@@ -45,20 +45,11 @@ Metadata:
       - Label:
           default: Demo Environment Setup
         Parameters:
-          - BuildEks
           - BuildEcs
     ParameterLabels:
-      BuildEks:
-        default: Deploy EKS Demo Cluster
       BuildEcs:
         default: Deploy ECS Demo Cluster
 Parameters:
-  BuildEks:
-    Type: String
-    AllowedValues: 
-      - true
-      - false
-    Default: "false"
   BuildEcs:
     Type: String
     AllowedValues: 
@@ -66,9 +57,6 @@ Parameters:
       - false
     Default: "true"
 Conditions:
-  BuildEks: !Equals 
-    - !Ref BuildEks
-    - true
   BuildEcs: !Equals 
     - !Ref BuildEcs
     - true
@@ -116,37 +104,6 @@ Resources:
         taskdefinition: !GetAtt ECSStack.Outputs.taskdef
     DependsOn:
       - ECSStack
-  
-  EksStack:
-    Condition: BuildEks
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/eks.template.yaml'
-      Parameters:
-        VpcId: !GetAtt VPCStack.Outputs.VPCID
-        PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
-        PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
-    DependsOn:
-      - VPCStack
-      - KeyPairStack
-  
-  EksNodeGroupStack:
-    Condition: BuildEks
-    DependsOn:
-      - EksStack
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/eks-nodegroup.template.yaml'
-      Parameters:
-        VpcId: !GetAtt VPCStack.Outputs.VPCID
-        KeyName: !GetAtt KeyPairStack.Outputs.KeyPairName
-        ClusterControlPlaneSecurityGroup: !GetAtt EksStack.Outputs.EksSecurityGroup
-        ClusterName: !GetAtt EksStack.Outputs.ClusterName
-        Subnets:
-          Fn::Join:
-            - ','
-            - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
-              - !GetAtt VPCStack.Outputs.PublicSubnet2ID
   
 Outputs:
   PublicSubnet1ID:

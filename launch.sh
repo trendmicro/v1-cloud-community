@@ -50,7 +50,6 @@ echo 'Deploying Stack...'
 # ParameterKey=PARAMETER2,ParameterValue=${PARAMETER2} \
 aws cloudformation create-stack --stack-name ${STACK_NAME} \
     --template-url ${TEMPLATE_URL} \
-    --parameters ParameterKey=BuildEks,ParameterValue=true \
     --parameters ParameterKey=BuildEcs,ParameterValue=true \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --disable-rollback --region ${AWS_REGION}
