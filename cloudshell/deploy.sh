@@ -70,14 +70,14 @@ kubectl create namespace demo --dry-run=client -o yaml | kubectl apply -f -
 # Deplouy java-goof Vulnerable demo app
 echo "💬 ${green}Deploying vulnerable apps..."
 kubectl apply -f pods/java-goof.yaml
-until kubectl get svc -n demo java-goof-service --output=jsonpath='{.status.loadBalancer}' | grep "ingress"; do : ; done
-JAVAGOOFURL=$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].status.loadBalancer.ingress[0].hostname}')
+until kubectl get svc -n demo java-goof-service --output=jsonpath='{.spec.clusterIP}' | grep "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" ; do : ; done
+JAVAGOOFURL=$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].spec.clusterIP}')
 echo "💬 ${green}java-goof URL: http://${JAVAGOOFURL}"
 
 # Deploy openssl vulnerable app
 kubectl apply -f pods/openssl3.yaml
-until kubectl get -n demo svc web-app-service --output=jsonpath='{.status.loadBalancer}' | grep "ingress"; do : ; done
-WEBAPPURL=$(kubectl get svc -n demo --selector=app=web-app -o jsonpath='{.items[*].status.loadBalancer.ingress[0].hostname}')
+until kubectl get -n demo svc web-app-service --output=jsonpath='{.spec.clusterIP}' | grep "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" ; do : ; done
+WEBAPPURL=$(kubectl get svc -n demo --selector=app=web-app -o jsonpath='{.items[*].spec.clusterIP}')
 echo "💬 ${green}web-app URL: http://${WEBAPPURL}"
 echo "💬 ${green}Vulnerable apps deployed."
 
@@ -86,7 +86,7 @@ echo "💬 ${green}Vulnerable apps deployed."
 helm install \
      trendmicro \
      --namespace trendmicro-system --create-namespace \
-     --values my-overrides.yaml \
+     --values ../overrides.yaml \
      https://github.com/trendmicro/cloudone-container-security-helm/archive/master.tar.gz
 echo "💬 ${green}Container Security deployed."
 

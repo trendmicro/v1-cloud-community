@@ -13,12 +13,12 @@ Welcome to the Vision One Container Security Demo Documentation. This package co
 1. Login to your AWS Account
 2. Select the AWS CloudShell service
 3. Create the overrides.yaml file needed to deploy container security
-     <details>
+<details>
 <summary>Click here if you need help with this step!</summary>
      1. Visit the Trend Vision One Documentation to learn how to add a cluster (LINK)
      2. Download the override.yaml file from the k8s provisioning UI flow
      3. [Upload the file into AWS Cloudshell](https://docs.aws.amazon.com/cloudshell/latest/userguide/getting-started.html#folder-upload)
-     </details>
+</details>
 4. Run the following 3 commands
      1. wget https://v1-demo-environments.s3.amazonaws.com/launch.sh
      2. chmod +x launch.sh
