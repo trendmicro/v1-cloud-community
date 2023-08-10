@@ -66,8 +66,10 @@ sudo mv /tmp/eksctl /usr/local/bin
 sudo yum install -y openssl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 echo 'Waiting for VPC to be created....'
-aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME} --region ${AWS_REGION}
-Subnet1=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${STACK_NAME}'][].Outputs[?OutputKey=='PublicSubnet1ID'].OutputValue" --output textt)
-Subnet2=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${STACK_NAME}'][].Outputs[?OutputKey=='PublicSubnet2ID'].OutputValue" --output textt)
+sleep 45
+VpcStack=$(aws cloudformation list-stacks --region ${AWS_REGION} --query "StackSummaries[?contains(StackName, '${STACK_NAME}-VPC') && StackStatus == 'CREATE_COMPLETE'].StackName" --output text)
+echo "VPC Stack Name: ${VpcStack}"
+Subnet1=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${VpcStack}'][].Outputs[?OutputKey=='PublicSubnet1ID'].OutputValue" --output text)
+Subnet2=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${VpcStack}'][].Outputs[?OutputKey=='PublicSubnet2ID'].OutputValue" --output text)
 
 ./deploy.sh ${STACK_NAME} ${AWS_REGION} ${Subnet1} ${Subnet2}

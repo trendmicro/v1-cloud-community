@@ -47,7 +47,7 @@ eksctl create cluster \
     -t t3.medium \
     --enable-ssm \
     --full-ecr-access \
-    --region=$2
+    --region=$2 \
     --alb-ingress-access \
     --tags purpose=demo,owner="$(whoami)" \
     --name "$CLUSTER_NAME" \
