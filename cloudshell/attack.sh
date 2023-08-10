@@ -2,7 +2,7 @@
 # Bash Menu Script Example
 
 # Fetch victim URL using kubectl
-URL="http://$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].status.loadBalancer.ingress[0].hostname}')"
+URL="http://$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].spec.clusterIP}')"
 
 # Set color green for echo output
 green=$(tput setaf 2)

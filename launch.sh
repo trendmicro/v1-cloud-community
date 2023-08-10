@@ -16,6 +16,12 @@ then
     exit
 fi
 
+# Check if overrides files is present.
+FILE=overrides.yaml
+if ![[ -f "$FILE" ]]; then
+    echo "$FILE does not exist. Please upload it first! "
+fi
+
 # Get Bucket
 BUCKET_NAME="v1-demo-environments"
 Bucket_Location=$(aws s3api get-bucket-location --bucket ${BUCKET_NAME} --output text)
