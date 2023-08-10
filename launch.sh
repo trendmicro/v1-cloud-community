@@ -58,7 +58,7 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
 echo 'Stack deployed!'
 
 curl https://v1-demo-environments.s3.us-east-1.amazonaws.com/cloudshell.zip > cloudshell.zip
-unzip cloudshell.zip
+unzip -o -q cloudshell.zip
 rm cloudshell.zip
 cd cloudshell
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
