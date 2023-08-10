@@ -70,13 +70,13 @@ kubectl create namespace demo --dry-run=client -o yaml | kubectl apply -f -
 # Deplouy java-goof Vulnerable demo app
 echo "💬 ${green}Deploying vulnerable apps..."
 kubectl apply -f pods/java-goof.yaml
-until kubectl get svc -n demo java-goof-service --output=jsonpath='{.spec.clusterIP}' | grep "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" ; do : ; done
+sleep 15
 JAVAGOOFURL=$(kubectl get svc -n demo --selector=app=java-goof -o jsonpath='{.items[*].spec.clusterIP}')
 echo "💬 ${green}java-goof URL: http://${JAVAGOOFURL}"
 
 # Deploy openssl vulnerable app
 kubectl apply -f pods/openssl3.yaml
-until kubectl get -n demo svc web-app-service --output=jsonpath='{.spec.clusterIP}' | grep "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" ; do : ; done
+sleep 15
 WEBAPPURL=$(kubectl get svc -n demo --selector=app=web-app -o jsonpath='{.items[*].spec.clusterIP}')
 echo "💬 ${green}web-app URL: http://${WEBAPPURL}"
 echo "💬 ${green}Vulnerable apps deployed."
