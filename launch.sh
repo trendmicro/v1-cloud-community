@@ -16,12 +16,6 @@ then
     exit
 fi
 
-# Check if overrides files is present.
-FILE=overrides.yaml
-if ![[ -f "$FILE" ]]; then
-    echo "$FILE does not exist. Please upload it first! "
-fi
-
 # Get Bucket
 BUCKET_NAME="v1-demo-environments"
 Bucket_Location=$(aws s3api get-bucket-location --bucket ${BUCKET_NAME} --output text)
@@ -35,7 +29,7 @@ echo 'Bucket Region is '${BUCKET_REGION}
 echo ""
 
 # Set Region
-if [ $2 != '']
+if [ $2 != ''] && [ $2 != 'None' ]
 then
   AWS_REGION=$2
 else
@@ -47,7 +41,7 @@ echo 'Region to be deployed to is '${AWS_REGION}
 # Create CloudFormation Stack
 STACK_NAME=$1
 BUCKET_URL="https://"${BUCKET_NAME}".s3."${BUCKET_REGION}".amazonaws.com"
-TEMPLATE_URL=""${BUCKET_URL}"/main.template.yaml"
+TEMPLATE_URL=""${BUCKET_URL}"/utils/main.template.yaml"
 PARAMETER1="true"
 PARAMETER2="true"
 echo 'Deploying Stack...'
@@ -62,16 +56,19 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
 
 echo 'Stack deployed!'
 
-curl https://v1-demo-environments.s3.us-east-1.amazonaws.com/cloudshell.zip > cloudshell.zip
+echo 'Fetching Supporting Files!'
+curl --silent "https://v1-demo-environments.s3.us-east-1.amazonaws.com/cloudshell.zip" > cloudshell.zip
 unzip -o -q cloudshell.zip
 rm cloudshell.zip
 cd cloudshell
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
 sudo mv /tmp/eksctl /usr/local/bin
 sudo yum install -y openssl
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+curl --silent https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+echo 'Files Fetched!'
 echo 'Waiting for VPC to be created....'
-sleep 45
+echo 'This may take a minute...'
+sleep 60
 VpcStack=$(aws cloudformation list-stacks --region ${AWS_REGION} --query "StackSummaries[?contains(StackName, '${STACK_NAME}-VPC') && StackStatus == 'CREATE_COMPLETE'].StackName" --output text)
 echo "VPC Stack Name: ${VpcStack}"
 Subnet1=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${VpcStack}'][].Outputs[?OutputKey=='PublicSubnet1ID'].OutputValue" --output text)

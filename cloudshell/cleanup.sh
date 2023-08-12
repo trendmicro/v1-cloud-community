@@ -3,6 +3,9 @@
 # exit when any command fails
 set -e
 
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+
 # Check if number of arguments isn't equal to 2
 if [ "$#" -ne 2 ]; then
     echo "You must enter 2 command line arguments: STACK_NAME and REGION"
