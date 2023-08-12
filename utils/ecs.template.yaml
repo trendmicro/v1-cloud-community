@@ -96,7 +96,7 @@ Resources:
         - Name: dvwa
           Cpu: 10
           Essential: true
-          Image: sagikazarmark/dvwa
+          Image: public.ecr.aws/k1q0d6m0/dvwa
           Memory: 200
           LogConfiguration:
             LogDriver: awslogs
