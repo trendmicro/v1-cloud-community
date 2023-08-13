@@ -53,7 +53,9 @@ eksctl create cluster \
     --version=1.27 \
     --tags purpose=demo,owner="$(whoami)" \
     --name "$CLUSTER_NAME" \
-    --vpc-public-subnets=$3,$4
+    --vpc-public-subnets=$3,$4 \
+    --ssh-access \
+    --ssh-public-key=lab-key-pair
 echo "💬 ${green}EKS Cluster $CLUSTER_NAME deployed."
 
 

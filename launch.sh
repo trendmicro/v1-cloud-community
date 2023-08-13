@@ -2,7 +2,10 @@
 
 # exit when any command fails
 set -e
-
+echo 'Begining Trend Vision One - Container Security Demo Environment Deployment'
+echo ""
+echo 'Checking for required parameters...'
+echo ""
 # Check if number of arguments equals 3 or 4
 if [ "$#" -ne 2 ]; then
     echo "You must enter a command line arguments: STACK_NAME AWS_REGION"
