@@ -16,6 +16,16 @@ then
     exit
 fi
 
+# Check if overrides exists
+filename="overrides.yaml"  # Replace this with your file's name
+
+if [ -e "$filename" ]; then
+    echo "File exists: $filename"
+else
+    echo "File does not exist: $filename"
+    exit 1  # Exit with an error code
+fi
+
 # Get Bucket
 BUCKET_NAME="v1-demo-environments"
 Bucket_Location=$(aws s3api get-bucket-location --bucket ${BUCKET_NAME} --output text)
@@ -56,22 +66,26 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} \
 
 echo 'Stack deployed!'
 
+#Get EKS Launch Files
 echo 'Fetching Supporting Files!'
 curl --silent "https://v1-demo-environments.s3.us-east-1.amazonaws.com/cloudshell.zip" > cloudshell.zip
 unzip -o -q cloudshell.zip
 rm cloudshell.zip
 cd cloudshell
+#Install latest version of EksCtl
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
 sudo mv /tmp/eksctl /usr/local/bin
 sudo yum install -y openssl
+#Install Latest version of helm
 curl --silent https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 echo 'Files Fetched!'
 echo 'Waiting for VPC to be created....'
 echo 'This may take a minute...'
 sleep 60
+#Get the Subnets to pass to eksctl
 VpcStack=$(aws cloudformation list-stacks --region ${AWS_REGION} --query "StackSummaries[?contains(StackName, '${STACK_NAME}-VPC') && StackStatus == 'CREATE_COMPLETE'].StackName" --output text)
 echo "VPC Stack Name: ${VpcStack}"
 Subnet1=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${VpcStack}'][].Outputs[?OutputKey=='PublicSubnet1ID'].OutputValue" --output text)
 Subnet2=$(aws cloudformation describe-stacks --region ${AWS_REGION} --query "Stacks[?StackName=='${VpcStack}'][].Outputs[?OutputKey=='PublicSubnet2ID'].OutputValue" --output text)
-
+#Run the EKS Deploy Script
 ./deploy.sh ${STACK_NAME} ${AWS_REGION} ${Subnet1} ${Subnet2}

@@ -36,6 +36,14 @@ fi
 echo 'Bucket Region is '${BUCKET_REGION}
 echo ""
 
+#Remove cloudshell.zip
+rm cloudshell.zip
+echo "cloudshell.zip removed"
+echo ""
+#Recreate cloudshell.zip
+zip cloudshell.zip -r -q cloudshell/*
+echo "cloudshell.zip updated"
+echo ""
 # Sync local folder with S3
 FOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 

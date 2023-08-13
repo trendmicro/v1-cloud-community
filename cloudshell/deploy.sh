@@ -33,6 +33,7 @@ fi
 
 # Local state file
 STATE_FILE=".container-security-demo"
+STACK_NAME=$1
 REGION=$2
 # Set color green for echo output
 green=$(tput setaf 2)
@@ -49,6 +50,7 @@ eksctl create cluster \
     --full-ecr-access \
     --region=$2 \
     --alb-ingress-access \
+    --version=1.27 \
     --tags purpose=demo,owner="$(whoami)" \
     --name "$CLUSTER_NAME" \
     --vpc-public-subnets=$3,$4
@@ -91,11 +93,7 @@ helm install \
 echo "💬 ${green}Trend Vision One - Container Security deployed."
 
 # Saving state to local file for later demo cleanup
-STATE=$(jq --null-input \
-  --arg clustername "$CLUSTER_NAME" \
-  --arg stackname "$STACK_NAME" \
-  --arg region "$REGION" \
-  '{"clustername": $clustername, "stackname": $STACK_NAME, "region": $REGION}')
+STATE=$(jq -n --arg clustername "$CLUSTER_NAME" --arg region "$REGION" --arg stackname "$STACK_NAME"  '{clustername: $clustername, region: $region, stackname: $stackname}')
 echo "$STATE" > $STATE_FILE
 
 # Rest API call back to Trend Micro RD to help track usage of this template
