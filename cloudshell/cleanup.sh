@@ -34,7 +34,10 @@ echo "💬 ${green}Destroying the cluster..."
 CLUSTER_NAME=$(cat $STATE_FILE | jq -r '.clustername')
 eksctl delete cluster "$CLUSTER_NAME"
 
+
 # Destroys the CFN stack
+STACK_NAME=$(cat $STATE_FILE | jq -r '.stackname')
+AWS_REGION=$(cat $STATE_FILE | jq -r '.region')
 echo "💬 ${green}Destroying the Stack..."
 aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$AWS_REGION"
 

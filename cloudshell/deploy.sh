@@ -33,7 +33,7 @@ fi
 
 # Local state file
 STATE_FILE=".container-security-demo"
-
+REGION=$2
 # Set color green for echo output
 green=$(tput setaf 2)
 
@@ -93,7 +93,13 @@ echo "💬 ${green}Trend Vision One - Container Security deployed."
 # Saving state to local file for later demo cleanup
 STATE=$(jq --null-input \
   --arg clustername "$CLUSTER_NAME" \
-  '{"clustername": $clustername}')
+  --arg stackname "$STACK_NAME" \
+  --arg region "$REGION" \
+  '{"clustername": $clustername, "stackname": $STACK_NAME, "region": $REGION}')
 echo "$STATE" > $STATE_FILE
+
+# Rest API call back to Trend Micro RD to help track usage of this template
+AwsId=$(aws sts get-caller-identity --query "Account" --output text)
+curl -X POST -H "AwsId: $AwsId" -H "X-API-Key: ud6FALTrlQ6qAPFRNhfN71rwSHLuCj0M8nLVqZ2J" https://cs-demo-callback.v1.trenddemos.com
 
 echo "💬 ${green}Deployment completed."
