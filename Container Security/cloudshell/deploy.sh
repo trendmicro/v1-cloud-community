@@ -63,9 +63,6 @@ echo "Installing pip3 requests..."
 pip install requests
 echo "pip3 requests installed."
 
-# Get random Container Image name
-IMAGE=$(python cloudshell/randomcontainer.py)
-
 # Deploys Calico according to https://docs.aws.amazon.com/eks/latest/userguide/calico.html
 echo "💬 ${green}Deploying Calico..."
 kubectl create namespace tigera-operator
