@@ -58,6 +58,10 @@ eksctl create cluster \
     --ssh-public-key=lab-key-pair
 echo "💬 ${green}EKS Cluster $CLUSTER_NAME deployed."
 
+# Install pip3 requests for python script
+echo "Installing pip3 requests..."
+pip install requests
+echo "pip3 requests installed."
 
 # Deploys Calico according to https://docs.aws.amazon.com/eks/latest/userguide/calico.html
 echo "💬 ${green}Deploying Calico..."
@@ -100,6 +104,8 @@ echo "$STATE" > $STATE_FILE
 
 # Rest API call back to Trend Micro RD to help track usage of this template
 AwsId=$(aws sts get-caller-identity --query "Account" --output text)
-curl -X POST -H "AwsId: $AwsId" -H "X-API-Key: ud6FALTrlQ6qAPFRNhfN71rwSHLuCj0M8nLVqZ2J" https://cs-demo-callback.v1.trenddemos.com
+Encode='WC1BUEktS2V5OiB1ZDZGQUxUcmxRNnFBUEZSTmhmTjcxcndTSEx1Q2owTThuTFZxWjJKCg=='
+KEY=$(echo -n $Encode | base64 --decode)
+curl -X POST -H "AwsId: $AwsId" -H $KEY  https://cs-demo-callback.v1.trenddemos.com
 
 echo "💬 ${green}Deployment completed."
