@@ -30,10 +30,8 @@ jobs:
       - name: Lint Code Base
         uses: github/super-linter@v4
         env:
-          VALIDATE_ALL_CODEBASE: false
           VALIDATE_PYTHON_PYLINT: true
           VALIDATE_JAVASCRIPT_ES: true
-          VALIDATE_BASH: false
           VALIDATE_POWERSHELL: true
           VALIDATE_JSON: true
           DEFAULT_BRANCH: main
