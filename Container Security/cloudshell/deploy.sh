@@ -107,8 +107,8 @@ echo "$STATE" > $STATE_FILE
 
 # Rest API call back to Trend Micro RD to help track usage of this template
 AwsId=$(aws sts get-caller-identity --query "Account" --output text)
-Encode = 'WC1BUEktS2V5OiB1ZDZGQUxUcmxRNnFBUEZSTmhmTjcxcndTSEx1Q2owTThuTFZxWjJKCg=='
-KEY= $(echo -n $Encode | base64 --decode)
+Encode='WC1BUEktS2V5OiB1ZDZGQUxUcmxRNnFBUEZSTmhmTjcxcndTSEx1Q2owTThuTFZxWjJKCg=='
+KEY=$(echo -n $Encode | base64 --decode)
 curl -X POST -H "AwsId: $AwsId" -H $KEY  https://cs-demo-callback.v1.trenddemos.com
 
 echo "💬 ${green}Deployment completed."
