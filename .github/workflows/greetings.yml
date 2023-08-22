@@ -1,0 +1,16 @@
+name: Greetings
+
+on: [pull_request_target, issues]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/first-interaction@v1
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        issue-message: "Greetings!  Thanks for your submission!  We will be in touch with you as soon as possible.  Please note this communitiy is managed by Trend Micro Employees, but not there main job, so if this is urgent, we suggest opening a support case!"
+        pr-message: "Greetings!  Thanks for your submission!  We will be in touch with you as soon as possible."
