@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: java-goof
-        image: public.ecr.aws/k1q0d6m0/java-demo:latest
+        image: public.ecr.aws/trendvisionone-community/java-demo
         ports:
         - containerPort: 80
 ---

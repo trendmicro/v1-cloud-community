@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: web-app
-        image: public.ecr.aws/k1q0d6m0/openssl3-demo
+        image: public.ecr.aws/trendvisionone-community/openssl3-demo
         ports:
         - containerPort: 80
 ---

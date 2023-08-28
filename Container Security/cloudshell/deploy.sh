@@ -45,7 +45,7 @@ CLUSTER_NAME=$1-cluster-$RANDOM
 echo "💬 ${green}Deploying EKS cluster $CLUSTER_NAME..."
 eksctl create cluster \
     --tags Project=TrendMicroContainerSecurityDemo \
-    -t t3.medium \
+    --node-type t3.medium \
     --enable-ssm \
     --full-ecr-access \
     --region=$2 \
