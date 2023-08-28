@@ -17,5 +17,5 @@ spec:
     spec:
       containers:
       - name: attacker
-        image: public.ecr.aws/k1q0d6m0/attacker
+        image: public.ecr.aws/trendvisionone-community/attacker
 ---
