@@ -56,16 +56,28 @@ Parameters:
       - true
       - false
     Default: true
+  FargateSupport:
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+    Default: false
 Conditions:
   BuildEcs: !Equals 
     - !Ref BuildEcs
     - true
+  FargateSupport: !Equals 
+    - !Ref FargateSupport
+    - true
+  NoFargateSupport:
+      "Fn::Not":
+        - Condition: FargateSupport
 
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: 'https://v1-demo-environments.s3.amazonaws.com/utils/vpc.template.yaml'
+      TemplateURL: !If [FargateSupport, 'https://v1-demo-environments.s3.amazonaws.com/utils/vpc.template-fargate.yaml', 'https://v1-demo-environments.s3.amazonaws.com/utils/vpc.template.yaml'] 
       Parameters:
         NumberOfAZs: 2
         AvailabilityZones: !FindInMap
