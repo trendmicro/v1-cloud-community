@@ -6,7 +6,7 @@ echo 'Begining Trend Vision One - Container Security Demo Environment Deployment
 echo ""
 echo 'Checking for required parameters...'
 echo ""
-# Check if number of arguments equals 3 or 4
+# Check if number of arguments equals 3
 if [ "$#" -ne 2 ]; then
     echo "You must enter a command line arguments: STACK_NAME AWS_REGION"
     exit
@@ -42,14 +42,8 @@ echo 'Bucket Region is '${BUCKET_REGION}
 echo ""
 
 # Set Region
-if [ $2 != ''] && [ $2 != 'None' ]
-then
-  AWS_REGION=$2
-else
-  AWS_REGION="us-east-1"
-fi
+AWS_REGION="us-east-1"
 echo 'Region to be deployed to is '${AWS_REGION}
-
 
 # Create CloudFormation Stack
 STACK_NAME=$1
@@ -57,13 +51,14 @@ BUCKET_URL="https://"${BUCKET_NAME}".s3."${BUCKET_REGION}".amazonaws.com"
 TEMPLATE_URL=""${BUCKET_URL}"/utils/main.template.yaml"
 PARAMETER1="true"
 PARAMETER2="true"
-echo 'Deploying Stack...'
+echo 'Deploying Stack with Fargate Support...'
 # You should add more parameters as needed under the --parameters flag, like:
 # ParameterKey=PARAMETER1,ParameterValue=${PARAMETER1} \
 # ParameterKey=PARAMETER2,ParameterValue=${PARAMETER2} \
 aws cloudformation create-stack --stack-name ${STACK_NAME} \
     --template-url ${TEMPLATE_URL} \
     --parameters ParameterKey=BuildEcs,ParameterValue=true \
+    --parameters ParameterKey=FargateSupport,ParameterValue=true \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --disable-rollback --region ${AWS_REGION}
 

@@ -47,8 +47,8 @@ echo ""
 # Sync local folder with S3
 FOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-echo 'Syncing local files to S3 bucket...'
-aws s3 sync ${FOLDER} s3://${BUCKET_NAME}/ --exclude ".git/*" --profile ${AWS_PROFILE} --delete
+echo 'Syncing local files to S3 bucket....'
+aws s3 sync ${FOLDER} s3://${BUCKET_NAME} --profile ${AWS_PROFILE} --delete
 echo 'Files synced!'
 echo ''
 
