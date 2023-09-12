@@ -10,14 +10,14 @@ do
     case $opt in
         "Deploy EKS + ECS + Fargate Environment")
             echo "Deploying Environment..."
-            echo "In Progress......Not Ready yet!"
-            curl --silent "https://v1-demo-environments.s3.us-east-1.amazonaws.com/launch-full.sh" > launch-full.sh
-            chmod +x launch-full.sh
-            echo "What Region?"
-            read REGION
-            echo "What Cluster Name?"
-            read STACK_NAME
-            ./launch-full.sh STACK_NAME REGION
+            echo "Not Ready yet! Try Another Option"
+            #curl --silent "https://v1-demo-environments.s3.us-east-1.amazonaws.com/launch-full.sh" > launch-full.sh
+            #chmod +x launch-full.sh
+            #echo "What Region?"
+            #read REGION
+            #echo "What Cluster Name?"
+            #read STACK_NAME
+            #./launch-full.sh $STACK_NAME $REGION
             ;;
         "Deploy EKS + ECS w/o Fargate Environment")
             echo "Deploying Environment..."
@@ -28,7 +28,7 @@ do
             read REGION
             echo "What Cluster Name?"
             read STACK_NAME
-            ./launch-standard.sh STACK_NAME REGION
+            ./launch-standard.sh $STACK_NAME $REGION
             ;;
         "Generate Events")
             echo "💬${green}Launching attacker..."

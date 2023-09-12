@@ -47,6 +47,7 @@ echo 'Region to be deployed to is '${AWS_REGION}
 
 # Create CloudFormation Stack
 STACK_NAME=$1
+echo 'Stack Name is '${STACK_NAME}
 BUCKET_URL="https://"${BUCKET_NAME}".s3."${BUCKET_REGION}".amazonaws.com"
 TEMPLATE_URL=""${BUCKET_URL}"/utils/main.template.yaml"
 PARAMETER1="true"
