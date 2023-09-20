@@ -84,7 +84,7 @@ curl --silent https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-
 echo 'Files Fetched!'
 echo 'Waiting for VPC to be created....'
 echo 'This may take a minute...'
-sleep 60
+sleep 75
 #Get the Subnets to pass to eksctl
 VpcStack=$(aws cloudformation list-stacks --region ${AWS_REGION} --query "StackSummaries[?contains(StackName, '${STACK_NAME}-VPC') && StackStatus == 'CREATE_COMPLETE'].StackName" --output text)
 echo "VPC Stack Name: ${VpcStack}"
