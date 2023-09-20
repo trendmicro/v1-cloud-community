@@ -60,7 +60,7 @@ echo "💬 ${green}EKS Cluster $CLUSTER_NAME deployed."
 
 # Install pip3 requests for python script
 echo "Installing pip3 requests..."
-pip install requests
+pip3 install requests
 echo "pip3 requests installed."
 
 # Deploys Calico according to https://docs.aws.amazon.com/eks/latest/userguide/calico.html
