@@ -1,0 +1,49 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  repository: '' # Set this to your Docker repository, e.g., 'mydockerhub/myimage'
+  tag: '$(Build.BuildId)'
+  imageName: '' # Set this to your image name, e.g., 'myimage'
+
+stages:
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'dockerhub'
+        repository: $(repository)
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+    - script: |
+        tar --version
+        wget https://cli.artifactscan.cloudone.trendmicro.com/tmas-cli/latest/tmas-cli_Linux_x86_64.tar.gz
+      displayName: Get Latest Version of TMAS
+    - task: ExtractFiles@1
+      inputs:
+        archiveFilePatterns: '**/tmas-cli_Linux_x86_64.tar.gz'
+        destinationFolder: 'tmas-cli'
+        cleanDestinationFolder: true
+        overwriteExistingFiles: true
+    - task: Bash@3
+      displayName: Save Docker Image
+      inputs:
+        targetType: 'inline'
+        script: |
+          docker save $(repository):$(tag) -o image.tar
+    - task: Bash@3
+      displayName: "Scan from Registry to Json"
+      inputs:
+        targetType: 'inline'
+        script: ./tmas-cli/tmas scan docker-archive:image.tar -VMS --saveSBOM > result.json
+      env:
+        TMAS_API_KEY: $(TMAS_API_KEY)
