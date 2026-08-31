@@ -21,7 +21,7 @@ The solution uses:
 
 ## Architecture
 
-
+![Architecture](./images/Architecture.png)
 
 Container Security is installed **once per cluster**, not once per node.
 
@@ -642,61 +642,7 @@ AUTO_APPROVE=true \
 
 # Execution Flow
 
-```text
-START
-  |
-  v
-Validate tools (az, jq, git) and V1_API_KEY
-  |
-  v
-Resolve chart version/tag (latest or pinned)
-  |
-  v
-Resolve subscriptions
-  |
-  v
-Discover AKS
-  |
-  +-- No tag filter      --> All Running/Succeeded AKS
-  +-- Tag filter set     --> Matching AKS only
-
-  |
-  v
-Print Deployment Target Summary
-  |
-  +-- 0 clusters found --> Exit (0, or 2 if discovery failures occurred)
-  |
-  v
-DRY_RUN=true? --> Print preview message --> EXIT (no changes applied)
-  |
-  v (DRY_RUN=false)
-AUTO_APPROVE=true? --> skip prompt
-  | (false)
-  v
-Interactive confirmation [y/N] --> declined/no TTY --> EXIT 1
-  |
-  v
-Parallel execution (MAX_PARALLEL)
-  |
-  v
-Per cluster, via az aks command invoke:
-  Create namespace
-  Apply/validate registration secret (from V1_API_KEY)
-  helm upgrade --install --atomic
-  |
-  +-- success --> SUCCESS
-  +-- failure --> Helm atomic rollback --> FAILED
-
-  |
-  v
-Continue remaining clusters
-  |
-  v
-Merge logs, generate summary.tsv and deployment.log
-  |
-  v
-END (exit 0 if all succeeded, exit 2 if any FAILED/discovery failure)
-```
+![Permissions Example](./images/Execution_Flow.png)
 
 ---
 
@@ -786,10 +732,6 @@ This simplifies CI/CD integration.
 
 The automation can be executed from:
 
-- Azure DevOps Pipelines
-- GitHub Actions
-- Jenkins
-- GitLab CI
 - Azure Automation
 - Cloud Shell
 - Bastion / administration hosts
