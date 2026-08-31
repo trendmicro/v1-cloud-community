@@ -21,30 +21,7 @@ The solution uses:
 
 ## Architecture
 
-```text
-Azure Tenant
-    |
-    +-- Subscription A
-    |     +-- AKS 01
-    |     +-- AKS 02
-    |
-    +-- Subscription B
-    |     +-- AKS 03
-    |     +-- AKS 04
-    |
-    +-- Subscription N
-          +-- AKS NN
 
-               |
-               | az aks command invoke
-               v
-
-       helm upgrade --install --atomic
-               |
-               v
-
-Trend Vision One Container Security
-```
 
 Container Security is installed **once per cluster**, not once per node.
 

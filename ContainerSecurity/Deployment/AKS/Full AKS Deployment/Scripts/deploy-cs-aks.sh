@@ -7,7 +7,9 @@
 # - Interactive confirmation gate before deploying (skippable via AUTO_APPROVE)
 # - Parallel execution
 # - Automatic latest stable Helm chart tag resolution
-# - helm upgrade --install with --atomic
+# - Vision One-aware deployment: helm upgrade for existing clusters, helm upgrade --install for new clusters
+# - Existing Vision One clusters upgrade from the repository main branch chart
+# - Helm operations use --atomic
 # - Per-cluster timing
 # - Single consolidated deployment log at the end
 # - TSV summary
@@ -45,25 +47,18 @@ VULNERABILITY_SCAN_ENABLED="${VULNERABILITY_SCAN_ENABLED:-true}"
 MALWARE_SCAN_ENABLED="${MALWARE_SCAN_ENABLED:-false}"
 SECRET_SCAN_ENABLED="${SECRET_SCAN_ENABLED:-false}"
 FIM_ENABLED="${FIM_ENABLED:-false}"
-
-REGISTRATION_FILE="${REGISTRATION_FILE:-trend-registration-secret.yaml}"
-
 CHART_URL="${CHART_URL:-}"
 
 # ============ AZURE CONFIGURATION ============= #
-
 SUBSCRIPTIONS="${SUBSCRIPTIONS:-}"
 AKS_TAG_FILTER="${AKS_TAG_FILTER:-}"
 
-# true  = discover and print the deployment plan (subscriptions + clusters),
-#         then exit without applying anything.
-# false = normal run.
-DRY_RUN="${DRY_RUN:-false}"
+V1_API_BASE_URL="${V1_API_BASE_URL:-https://api.xdr.trendmicro.com}"
+V1_K8S_CLUSTERS_ENDPOINT="${V1_API_BASE_URL%/}/v3.0/containerSecurity/kubernetesClusters"
 
-# true  = skip the interactive "proceed?" confirmation prompt and deploy
-#         immediately after discovery. Required for non-interactive/CI runs.
-#         Ignored when DRY_RUN=true.
-# false = pause after discovery and ask for confirmation before applying.
+V1_PRECHECK_ENABLED="${V1_PRECHECK_ENABLED:-true}"
+
+DRY_RUN="${DRY_RUN:-false}"
 AUTO_APPROVE="${AUTO_APPROVE:-false}"
 
 # ==============================================================================
@@ -117,7 +112,7 @@ is_true() {
 # VALIDATION
 # ==============================================================================
 
-for cmd in az jq git; do
+for cmd in az jq git curl; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "ERROR: Required command not found: $cmd" >&2
         exit 1
@@ -138,6 +133,7 @@ fi
 # silently treating a typo (e.g. "ture") as false.
 is_true "$DRY_RUN"
 is_true "$AUTO_APPROVE"
+is_true "$V1_PRECHECK_ENABLED"
 
 if [[ -n "$AKS_TAG_FILTER" ]]; then
     IFS=',' read -r -a _tag_filters <<< "$AKS_TAG_FILTER"
@@ -280,35 +276,35 @@ visionOne:
         enabled: ${FIM_ENABLED}
     scanManager:
         maxJobCount: ${MAX_JOB_COUNT}
-    resources:
-        falco:
-            limits:
+resources:
+    falco:
+        limits:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
-            requests:
+        requests:
             cpu: ${CPU_REQUEST}
             memory: ${MEMORY_REQUEST}
-        scout:
-            limits:
+    scout:
+        limits:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
-            requests:
+        requests:
             cpu: ${CPU_REQUEST}
             memory: ${MEMORY_REQUEST}
-    tolerations:
-        defaults:
-            - effect: NoSchedule
-              key: nvidia.com/gpu
-              operator: Exists
-            - effect: NoExecute
-              key: node.kubernetes.io/not-ready
-              operator: Exists
-    images:
-        defaults:
-            registry: ${IMAGE_REGISTRY}
-            project: ${IMAGE_PROJECT}
-            tag: ${RESOLVED_VERSION}
-            pullPolicy: IfNotPresent
+tolerations:
+    defaults:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+        - effect: NoExecute
+          key: node.kubernetes.io/not-ready
+          operator: Exists
+images:
+    defaults:
+        registry: ${IMAGE_REGISTRY}
+        project: ${IMAGE_PROJECT}
+        tag: ${RESOLVED_VERSION}
+        pullPolicy: IfNotPresent
 EOF
 }
 
@@ -410,6 +406,69 @@ list_target_clusters() {
 }
 
 # ==============================================================================
+# VISION ONE CLUSTER EXISTENCE CHECK
+# ==============================================================================
+
+# Return codes:
+#   0 = cluster already exists in Vision One; first matching item is written to stdout as JSON
+#   1 = cluster does not exist
+#   2 = Vision One API lookup failed or returned an invalid response
+vision_one_cluster_lookup() {
+    local cloud_provider_account_id="$1"
+    local cluster_name="$2"
+    local filter
+    local response
+    local body
+    local http_code
+    local match_count
+
+    # AKS subscription IDs and the generated Vision One cluster names do not contain
+    # single quotes, so they can be safely embedded in this TMV1-Filter expression.
+    filter="cloudProviderAccountId eq '${cloud_provider_account_id}' and name eq '${cluster_name}'"
+
+    if ! response="$(
+        curl \
+            --silent \
+            --show-error \
+            --connect-timeout 15 \
+            --max-time 30 \
+            --header "Authorization: Bearer ${V1_API_KEY}" \
+            --header "Accept: application/json" \
+            --header "TMV1-Filter: ${filter}" \
+            --write-out $'\n%{http_code}' \
+            "$V1_K8S_CLUSTERS_ENDPOINT"
+    )"; then
+        echo "[ERROR] Vision One API request failed for cluster '$cluster_name'." >&2
+        return 2
+    fi
+
+    http_code="${response##*$'\n'}"
+    body="${response%$'\n'*}"
+
+    if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+        echo "[ERROR] Vision One API returned HTTP $http_code for cluster '$cluster_name'." >&2
+        if [[ -n "$body" ]]; then
+            echo "[ERROR] Response: $(printf '%s' "$body" | jq -c . 2>/dev/null || printf '%s' "$body")" >&2
+        fi
+        return 2
+    fi
+
+    if ! jq -e '.items | type == "array"' >/dev/null 2>&1 <<< "$body"; then
+        echo "[ERROR] Vision One API response does not contain a valid 'items' array for '$cluster_name'." >&2
+        return 2
+    fi
+
+    match_count="$(jq -r '.items | length' <<< "$body")"
+
+    if (( match_count > 0 )); then
+        jq -c '.items[0]' <<< "$body"
+        return 0
+    fi
+
+    return 1
+}
+
+# ==============================================================================
 # PARALLEL EXECUTION CONTROL
 # ==============================================================================
 
@@ -433,12 +492,19 @@ deploy_cluster() {
 
     local start_epoch end_epoch elapsed
     local start_time end_time
-    local status
+    local status="FAILED"
     local trend_cluster_name
     local safe_name
     local order
     local temp_log
     local result_file
+    local deployment_mode="NEW_CLUSTER"
+    local block_deployment="false"
+    local v1_lookup_result=""
+    local v1_lookup_rc=0
+    local v1_existing_id=""
+    local v1_existing_status=""
+    local v1_existing_version=""
 
     start_epoch="$(date +%s)"
     start_time="$(timestamp)"
@@ -473,84 +539,200 @@ deploy_cluster() {
         echo "Resource ID      : $aks_id"
         echo "Target Version   : $RESOLVED_VERSION"
         echo "Target Tag       : $TARGET_TAG"
-        echo "Chart URL        : $CHART_URL"
+        echo "Install Chart URL: $CHART_URL"
         echo "================================================================================"
         echo
     } > "$temp_log"
 
-    if az aks command invoke \
-        --subscription "$sub_id" \
-        --resource-group "$aks_rg" \
-        --name "$aks_name" \
-        --only-show-errors \
-        --file "$OVERRIDES_FILE" \
-        --command "
-            set -e
+    # --------------------------------------------------------------------------
+    # Vision One pre-check
+    # --------------------------------------------------------------------------
+    # Existing in Vision One -> helm upgrade ONLY, using main.tar.gz.
+    # Not existing in Vision One -> registration + helm upgrade --install.
+    if is_true "$V1_PRECHECK_ENABLED"; then
+        echo "[INFO] Checking whether the cluster is already registered in Vision One..." >> "$temp_log"
+        echo "[INFO] Filter: cloudProviderAccountId eq '$sub_id' and name eq '$trend_cluster_name'" >> "$temp_log"
 
-            echo '============================================================'
-            echo 'Trend Vision One Container Security'
-            echo '============================================================'
-            echo 'Azure Cluster : $aks_name'
-            echo 'Vision One    : $trend_cluster_name'
-            echo 'Target Version: $RESOLVED_VERSION'
-            echo
+        v1_lookup_result="$(vision_one_cluster_lookup "$sub_id" "$trend_cluster_name" 2>> "$temp_log")"
+        v1_lookup_rc=$?
 
-            echo '[1/3] Creating namespace if required...'
+        case "$v1_lookup_rc" in
+            0)
+                deployment_mode="UPGRADE_EXISTING"
+                v1_existing_id="$(jq -r '.id // ""' <<< "$v1_lookup_result")"
+                v1_existing_status="$(jq -r '.protectionStatus // "UNKNOWN"' <<< "$v1_lookup_result")"
+                v1_existing_version="$(jq -r '.applicationVersion // "UNKNOWN"' <<< "$v1_lookup_result")"
 
-            kubectl create namespace '$NAMESPACE' \
-                --dry-run=client \
-                -o yaml \
-                | kubectl apply -f -
+                echo "[INFO] Cluster already exists in Vision One." >> "$temp_log"
+                echo "[INFO] Vision One ID       : ${v1_existing_id:-UNKNOWN}" >> "$temp_log"
+                echo "[INFO] Protection Status   : ${v1_existing_status:-UNKNOWN}" >> "$temp_log"
+                echo "[INFO] Application Version : ${v1_existing_version:-UNKNOWN}" >> "$temp_log"
+                echo "[ACTION] Existing cluster -> helm upgrade (NO --install)." >> "$temp_log"
+                echo "[ACTION] Upgrade chart     -> $CHART_URL" >> "$temp_log"
+                ;;
+            1)
+                deployment_mode="NEW_CLUSTER"
+                echo "[INFO] Cluster is not registered in Vision One." >> "$temp_log"
+                echo "[ACTION] New cluster -> registration flow + helm upgrade --install." >> "$temp_log"
+                ;;
+            *)
+                deployment_mode="V1_CHECK_FAILED"
+                block_deployment="true"
+                status="FAILED_V1_CHECK"
+                echo "[ERROR] Unable to validate cluster registration in Vision One." >> "$temp_log"
+                echo "[ERROR] Deployment blocked to avoid an incorrect registration/upgrade path." >> "$temp_log"
+                ;;
+        esac
 
-            echo
-            echo '[2/3] Applying Vision One registration secret...'
-
-            kubectl create secret generic trendmicro-container-security-registration-key \
-                --from-literal=registration.key='$V1_API_KEY' \
-                -n '$NAMESPACE' \
-                --dry-run=client \
-                -o yaml | kubectl apply -f -
-
-            # Validate secret exists before continuing
-            if ! kubectl get secret trendmicro-container-security-registration-key -n '$NAMESPACE' >/dev/null 2>&1; then
-                echo '[ERROR] Required secret trendmicro-container-security-registration-key could not be created.'
-                exit 1
-            fi
-
-            echo '[INFO] Secret trendmicro-container-security-registration-key is available.'
-
-            echo
-            echo '[3/3] Installing / upgrading Container Security...'
-
-            helm upgrade --install \
-                '$RELEASE' \
-                '$CHART_URL' \
-                --namespace '$NAMESPACE' \
-                --values '$OVERRIDES_BASENAME' \
-                --set visionOne.clusterRegistrationKey=true \
-                --set-string visionOne.groupId='$GROUP_ID' \
-                --set-string visionOne.clusterName='$trend_cluster_name' \
-                --set-string visionOne.resourceId='$aks_id' \
-                --atomic \
-                --timeout '$TIMEOUT'
-
-            echo
-            echo 'Helm status:'
-
-            helm status '$RELEASE' \
-                --namespace '$NAMESPACE'
-
-            echo
-            echo 'Trend Micro pods:'
-
-            kubectl get pods \
-                --namespace '$NAMESPACE' \
-                -o wide
-        " >> "$temp_log" 2>&1
-    then
-        status="SUCCESS"
+        echo >> "$temp_log"
     else
-        status="FAILED"
+        echo "[WARNING] V1_PRECHECK_ENABLED=false - using the new-cluster registration flow." >> "$temp_log"
+        echo >> "$temp_log"
+    fi
+
+    # --------------------------------------------------------------------------
+    # Existing cluster in Vision One: UPGRADE ONLY
+    # --------------------------------------------------------------------------
+    if [[ "$block_deployment" == "false" && "$deployment_mode" == "UPGRADE_EXISTING" ]]; then
+        if az aks command invoke \
+            --subscription "$sub_id" \
+            --resource-group "$aks_rg" \
+            --name "$aks_name" \
+            --only-show-errors \
+            --file "$OVERRIDES_FILE" \
+            --command "
+                set -e
+
+                echo '============================================================'
+                echo 'Trend Vision One Container Security - Existing Cluster'
+                echo '============================================================'
+                echo 'Azure Cluster : $aks_name'
+                echo 'Vision One    : $trend_cluster_name'
+                echo 'Action        : helm upgrade'
+                echo 'Chart         : $CHART_URL'
+                echo
+
+                echo '[1/3] Validating existing Helm release...'
+
+                if ! helm status '$RELEASE' --namespace '$NAMESPACE' >/dev/null 2>&1; then
+                    echo '[ERROR] Vision One contains this cluster, but Helm release "$RELEASE" was not found in namespace "$NAMESPACE".'
+                    echo '[ERROR] Existing-cluster mode intentionally does not use --install.'
+                    exit 1
+                fi
+
+                echo '[INFO] Existing Helm release found.'
+                echo
+                echo '[2/3] Upgrading Container Security...'
+
+                helm upgrade \
+                    --reuse-values \
+                    --values '$OVERRIDES_BASENAME' \
+                    --namespace '$NAMESPACE' \
+                    '$RELEASE' \
+                    '$CHART_URL' \
+                    --atomic \
+                    --timeout '$TIMEOUT'
+
+                echo
+                echo '[3/3] Validating upgraded deployment...'
+                echo
+                echo 'Helm status:'
+
+                helm status '$RELEASE' \
+                    --namespace '$NAMESPACE'
+
+                echo
+                echo 'Trend Micro pods:'
+
+                kubectl get pods \
+                    --namespace '$NAMESPACE' \
+                    -o wide
+            " >> "$temp_log" 2>&1
+        then
+            status="SUCCESS"
+        else
+            status="FAILED"
+        fi
+    fi
+
+    # --------------------------------------------------------------------------
+    # New cluster: keep the existing registration + upgrade --install logic
+    # --------------------------------------------------------------------------
+    if [[ "$block_deployment" == "false" && "$deployment_mode" == "NEW_CLUSTER" ]]; then
+        if az aks command invoke \
+            --subscription "$sub_id" \
+            --resource-group "$aks_rg" \
+            --name "$aks_name" \
+            --only-show-errors \
+            --file "$OVERRIDES_FILE" \
+            --command "
+                set -e
+
+                echo '============================================================'
+                echo 'Trend Vision One Container Security - New Cluster'
+                echo '============================================================'
+                echo 'Azure Cluster : $aks_name'
+                echo 'Vision One    : $trend_cluster_name'
+                echo 'Target Version: $RESOLVED_VERSION'
+                echo 'Action        : helm upgrade --install'
+                echo
+
+                echo '[1/3] Creating namespace if required...'
+
+                kubectl create namespace '$NAMESPACE' \
+                    --dry-run=client \
+                    -o yaml \
+                    | kubectl apply -f -
+
+                echo
+                echo '[2/3] Applying Vision One registration secret...'
+
+                kubectl create secret generic trendmicro-container-security-registration-key \
+                    --from-literal=registration.key='$V1_API_KEY' \
+                    -n '$NAMESPACE' \
+                    --dry-run=client \
+                    -o yaml | kubectl apply -f -
+
+                if ! kubectl get secret trendmicro-container-security-registration-key -n '$NAMESPACE' >/dev/null 2>&1; then
+                    echo '[ERROR] Required secret trendmicro-container-security-registration-key could not be created.'
+                    exit 1
+                fi
+
+                echo '[INFO] Secret trendmicro-container-security-registration-key is available.'
+
+                echo
+                echo '[3/3] Installing / upgrading Container Security...'
+
+                helm upgrade --install \
+                    '$RELEASE' \
+                    '$CHART_URL' \
+                    --namespace '$NAMESPACE' \
+                    --values '$OVERRIDES_BASENAME' \
+                    --set visionOne.clusterRegistrationKey=true \
+                    --set-string visionOne.groupId='$GROUP_ID' \
+                    --set-string visionOne.clusterName='$trend_cluster_name' \
+                    --set-string visionOne.resourceId='$aks_id' \
+                    --atomic \
+                    --timeout '$TIMEOUT'
+
+                echo
+                echo 'Helm status:'
+
+                helm status '$RELEASE' \
+                    --namespace '$NAMESPACE'
+
+                echo
+                echo 'Trend Micro pods:'
+
+                kubectl get pods \
+                    --namespace '$NAMESPACE' \
+                    -o wide
+            " >> "$temp_log" 2>&1
+        then
+            status="SUCCESS"
+        else
+            status="FAILED"
+        fi
     fi
 
     end_epoch="$(date +%s)"
@@ -562,6 +744,7 @@ deploy_cluster() {
         echo "================================================================================"
         echo " RESULT"
         echo "================================================================================"
+        echo "Deployment Mode  : $deployment_mode"
         echo "Status           : $status"
         echo "End Time         : $end_time"
         echo "Duration         : $(format_duration "$elapsed")"
@@ -569,23 +752,25 @@ deploy_cluster() {
         echo
     } >> "$temp_log"
 
-    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
         "$job_index" \
         "$sub_id" \
         "$sub_name" \
         "$aks_rg" \
         "$aks_name" \
         "$trend_cluster_name" \
+        "$deployment_mode" \
         "$status" \
         "$elapsed" \
         "$start_epoch" \
         "$end_epoch" \
         > "$result_file"
 
-    printf "[%s] [%-7s] %s | %s\n" \
+    printf "[%s] [%-7s] %s | %-16s | %s\n" \
         "$end_time" \
         "$status" \
         "$aks_name" \
+        "$deployment_mode" \
         "$(format_duration "$elapsed")"
 
     # Always return success to the local job scheduler.
@@ -605,12 +790,14 @@ echo "Start Time       : $(timestamp)"
 echo "Mode             : $(is_true "$DRY_RUN" && echo "DRY-RUN (preview only)" || echo "APPLY")"
 echo "Target Version   : $RESOLVED_VERSION"
 echo "Target Tag       : $TARGET_TAG"
-echo "Chart URL        : $CHART_URL"
+echo "Install Chart URL: $CHART_URL"
 echo "Parallel Jobs    : $MAX_PARALLEL"
 echo "Namespace        : $NAMESPACE"
 echo "Release          : $RELEASE"
 echo "Subscriptions    : ${SUBSCRIPTIONS:-Current Azure CLI subscription}"
 echo "Tag Filter       : ${AKS_TAG_FILTER:-NONE - All Running/Succeeded clusters}"
+echo "V1 Pre-check      : $V1_PRECHECK_ENABLED"
+echo "V1 API Base URL  : $V1_API_BASE_URL"
 echo "Run Directory    : $RUN_DIR"
 echo "================================================================================"
 echo
@@ -816,7 +1003,7 @@ TOTAL_ELAPSED=$((TOTAL_END - TOTAL_START))
 # BUILD SUMMARY
 # ==============================================================================
 
-printf "Index\tSubscriptionId\tSubscription\tResourceGroup\tCluster\tTrendCluster\tStatus\tSeconds\tStartEpoch\tEndEpoch\n" \
+printf "Index\tSubscriptionId\tSubscription\tResourceGroup\tCluster\tTrendCluster\tDeploymentMode\tStatus\tSeconds\tStartEpoch\tEndEpoch\n" \
     > "$SUMMARY_FILE"
 
 if find "$RESULT_DIR" -type f -name '*.tsv' -print -quit | grep -q .; then
@@ -833,15 +1020,16 @@ fi
 
 SUCCESS_COUNT="$(
     awk -F'\t' \
-        'NR > 1 && $7 == "SUCCESS" { count++ } END { print count+0 }' \
+        'NR > 1 && $8 == "SUCCESS" { count++ } END { print count+0 }' \
         "$SUMMARY_FILE"
 )"
 
 FAILED_COUNT="$(
     awk -F'\t' \
-        'NR > 1 && $7 == "FAILED" { count++ } END { print count+0 }' \
+        'NR > 1 && $8 ~ /^FAILED/ { count++ } END { print count+0 }' \
         "$SUMMARY_FILE"
 )"
+
 
 # ==============================================================================
 # BUILD SINGLE CONSOLIDATED LOG
@@ -854,9 +1042,11 @@ FAILED_COUNT="$(
     echo "Execution End    : $(timestamp)"
     echo "Target Version   : $RESOLVED_VERSION"
     echo "Target Tag       : $TARGET_TAG"
-    echo "Chart URL        : $CHART_URL"
+    echo "Install Chart URL: $CHART_URL"
     echo "Subscriptions    : ${SUBSCRIPTIONS:-Current Azure CLI subscription}"
     echo "Tag Filter       : ${AKS_TAG_FILTER:-NONE - All Running/Succeeded clusters}"
+    echo "V1 Pre-check      : $V1_PRECHECK_ENABLED"
+    echo "V1 API Base URL  : $V1_API_BASE_URL"
     echo "Parallel Jobs    : $MAX_PARALLEL"
     echo "================================================================================"
     echo
@@ -889,21 +1079,23 @@ FAILED_COUNT="$(
     echo "================================================================================"
     echo
 
-    printf "%-28s %-34s %-12s %-15s\n" \
+    printf "%-28s %-34s %-18s %-18s %-15s\n" \
         "SUBSCRIPTION" \
         "CLUSTER" \
+        "MODE" \
         "STATUS" \
         "DURATION"
 
-    printf "%-28s %-34s %-12s %-15s\n" \
+    printf "%-28s %-34s %-18s %-18s %-15s\n" \
         "----------------------------" \
         "----------------------------------" \
-        "------------" \
+        "------------------" \
+        "------------------" \
         "---------------"
 
     awk -F'\t' '
         NR > 1 {
-            seconds=$8
+            seconds=$9
 
             h=int(seconds/3600)
             m=int((seconds%3600)/60)
@@ -916,10 +1108,11 @@ FAILED_COUNT="$(
             else
                 duration=sprintf("%02ds", s)
 
-            printf "%-28s %-34s %-12s %-15s\n",
+            printf "%-28s %-34s %-18s %-18s %-15s\n",
                 substr($3,1,28),
                 substr($5,1,34),
-                $7,
+                substr($7,1,18),
+                $8,
                 duration
         }
     ' "$SUMMARY_FILE"
